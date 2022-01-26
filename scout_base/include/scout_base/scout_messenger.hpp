@@ -14,6 +14,7 @@
 
 #include <ros/ros.h>
 #include <nav_msgs/Odometry.h>
+#include <std_msgs/Float32.h>
 // #include <tf/transform_broadcaster.h>
 #include <tf2_ros/transform_broadcaster.h>
 
@@ -35,6 +36,9 @@ public:
     bool pub_tf;
 
     bool simulated_robot_ = false;
+    bool frontsafety_stop = false;
+    bool rearsafety_stop = false;
+    bool lidsafety_stop = false;
     int sim_control_rate_ = 50;
 
     void SetupSubscription();
@@ -55,6 +59,9 @@ private:
     ros::Publisher status_publisher_;
     ros::Publisher BMS_status_publisher_;
     ros::Subscriber motion_cmd_subscriber_;
+    ros::Subscriber rangefront_subscriber_;
+    ros::Subscriber rangerear_subscriber_;
+    ros::Subscriber rangelid_subscriber_;
     ros::Subscriber light_cmd_subscriber_;
     tf2_ros::TransformBroadcaster tf_broadcaster_;
 
@@ -68,6 +75,9 @@ private:
     ros::Time last_time_;
     ros::Time current_time_;
 
+    void RangeFrontCallback(const std_msgs::Float32::ConstPtr &msg);
+    void RangeRearCallback(const std_msgs::Float32::ConstPtr &msg);
+    void RangeLidCallback(const std_msgs::Float32::ConstPtr &msg);
     void TwistCmdCallback(const geometry_msgs::Twist::ConstPtr &msg);
     void LightCmdCallback(const scout_msgs::ScoutLightCmd::ConstPtr &msg);
     void PublishOdometryToROS(double linear, double angular, double dt);

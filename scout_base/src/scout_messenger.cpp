@@ -33,8 +33,54 @@ namespace westonrobot
     // cmd subscriber
     motion_cmd_subscriber_ = nh_->subscribe<geometry_msgs::Twist>(
         "/cmd_vel", 5, &ScoutROSMessenger::TwistCmdCallback, this);
+    rangefront_subscriber_ = nh_->subscribe<std_msgs::Float32>(
+        "/rangefront", 5, &ScoutROSMessenger::RangeFrontCallback, this);
+    rangerear_subscriber_ = nh_->subscribe<std_msgs::Float32>(
+        "/rangerear", 5, &ScoutROSMessenger::RangeRearCallback, this);
+    rangelid_subscriber_ = nh_->subscribe<std_msgs::Float32>(
+        "/rangelid", 5, &ScoutROSMessenger::RangeLidCallback, this);
     light_cmd_subscriber_ = nh_->subscribe<scout_msgs::ScoutLightCmd>(
         "/scout_light_control", 5, &ScoutROSMessenger::LightCmdCallback, this);
+  }
+
+  void ScoutROSMessenger::RangeFrontCallback(const std_msgs::Float32::ConstPtr &msg)
+  {
+    if (msg->data <= 800 && frontsafety_stop == false)
+    {
+      scout_->SetMotionCommand(0, 0);
+      frontsafety_stop = true;
+    }
+    else if (msg->data > 800 && frontsafety_stop == true)
+    {
+      frontsafety_stop = false;
+    }
+  }
+
+  void ScoutROSMessenger::RangeRearCallback(const std_msgs::Float32::ConstPtr &msg)
+  {
+    if (msg->data <= 800 && rearsafety_stop == false)
+    {
+      scout_->SetMotionCommand(0, 0);
+      rearsafety_stop = true;
+    }
+    else if (msg->data > 800 && rearsafety_stop == true)
+    {
+      rearsafety_stop = false;
+    }
+  }
+
+  
+  void ScoutROSMessenger::RangeLidCallback(const std_msgs::Float32::ConstPtr &msg)
+  {
+    if (msg->data <= 600 && lidsafety_stop == false)
+    {
+      scout_->SetMotionCommand(0, 0);
+      lidsafety_stop = true;
+    }
+    else if (msg->data > 600 && lidsafety_stop == true)
+    {
+      lidsafety_stop = false;
+    }
   }
 
   void ScoutROSMessenger::TwistCmdCallback(
@@ -42,7 +88,18 @@ namespace westonrobot
   {
     if (!simulated_robot_)
     {
-      scout_->SetMotionCommand(msg->linear.x, msg->angular.z);
+      if ((frontsafety_stop || lidsafety_stop) && msg->linear.x > 0)
+      {
+        scout_->SetMotionCommand(0, msg->angular.z);
+      }
+      else if (rearsafety_stop && msg->linear.x < 0)
+      {
+        scout_->SetMotionCommand(0, msg->angular.z);
+      }
+      else
+      {
+        scout_->SetMotionCommand(msg->linear.x, msg->angular.z);
+      }
     }
     else
     {
