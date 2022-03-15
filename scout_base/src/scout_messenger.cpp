@@ -37,20 +37,22 @@ namespace westonrobot
         "/rangefront", 5, &ScoutROSMessenger::RangeFrontCallback, this);
     rangerear_subscriber_ = nh_->subscribe<std_msgs::Float32>(
         "/rangerear", 5, &ScoutROSMessenger::RangeRearCallback, this);
-    rangelid_subscriber_ = nh_->subscribe<std_msgs::Float32>(
-        "/rangelid", 5, &ScoutROSMessenger::RangeLidCallback, this);
+    rangezed_subscriber_ = nh_->subscribe<std_msgs::Float32>(
+        "/rangezed", 5, &ScoutROSMessenger::RangeZedCallback, this);
     light_cmd_subscriber_ = nh_->subscribe<scout_msgs::ScoutLightCmd>(
         "/scout_light_control", 5, &ScoutROSMessenger::LightCmdCallback, this);
   }
 
   void ScoutROSMessenger::RangeFrontCallback(const std_msgs::Float32::ConstPtr &msg)
   {
-    if (msg->data <= 800 && frontsafety_stop == false)
+    if (msg->data <= 650 && frontsafety_stop == false)
     {
-      scout_->SetMotionCommand(0, 0);
       frontsafety_stop = true;
+      double linear, angular;
+      GetCurrentMotionCmdForSim(linear, angular);
+      SendCommandToRobot(linear, angular);
     }
-    else if (msg->data > 800 && frontsafety_stop == true)
+    else if (msg->data > 650 && frontsafety_stop == true)
     {
       frontsafety_stop = false;
     }
@@ -58,28 +60,32 @@ namespace westonrobot
 
   void ScoutROSMessenger::RangeRearCallback(const std_msgs::Float32::ConstPtr &msg)
   {
-    if (msg->data <= 800 && rearsafety_stop == false)
+    if (msg->data <= 850 && rearsafety_stop == false)
     {
-      scout_->SetMotionCommand(0, 0);
       rearsafety_stop = true;
+      double linear, angular;
+      GetCurrentMotionCmdForSim(linear, angular);
+      SendCommandToRobot(linear, angular);
     }
-    else if (msg->data > 800 && rearsafety_stop == true)
+    else if (msg->data > 850 && rearsafety_stop == true)
     {
       rearsafety_stop = false;
     }
   }
 
   
-  void ScoutROSMessenger::RangeLidCallback(const std_msgs::Float32::ConstPtr &msg)
+  void ScoutROSMessenger::RangeZedCallback(const std_msgs::Float32::ConstPtr &msg)
   {
-    if (msg->data <= 600 && lidsafety_stop == false)
+    if (msg->data <= 650 && zedsafety_stop == false)
     {
-      scout_->SetMotionCommand(0, 0);
-      lidsafety_stop = true;
+      zedsafety_stop = true;
+      double linear, angular;
+      GetCurrentMotionCmdForSim(linear, angular);
+      SendCommandToRobot(linear, angular);
     }
-    else if (msg->data > 600 && lidsafety_stop == true)
+    else if (msg->data > 650 && zedsafety_stop == true)
     {
-      lidsafety_stop = false;
+      zedsafety_stop = false;
     }
   }
 
@@ -88,25 +94,27 @@ namespace westonrobot
   {
     if (!simulated_robot_)
     {
-      if ((frontsafety_stop || lidsafety_stop) && msg->linear.x > 0)
+      SendCommandToRobot(msg->linear.x, msg->angular.z);
+    }
+    std::lock_guard<std::mutex> guard(twist_mutex_);
+    current_twist_ = *msg.get();
+    // ROS_INFO("cmd received:%f, %f", msg->linear.x, msg->angular.z);
+  }
+
+  void ScoutROSMessenger::SendCommandToRobot(double linear, double angular)
+  {
+      if ((frontsafety_stop || zedsafety_stop) && linear > 0)
       {
-        scout_->SetMotionCommand(0, msg->angular.z);
+        scout_->SetMotionCommand(0, angular);
       }
-      else if (rearsafety_stop && msg->linear.x < 0)
+      else if (rearsafety_stop && linear < 0)
       {
-        scout_->SetMotionCommand(0, msg->angular.z);
+        scout_->SetMotionCommand(0, angular);
       }
       else
       {
-        scout_->SetMotionCommand(msg->linear.x, msg->angular.z);
+        scout_->SetMotionCommand(linear, angular);
       }
-    }
-    else
-    {
-      std::lock_guard<std::mutex> guard(twist_mutex_);
-      current_twist_ = *msg.get();
-    }
-    // ROS_INFO("cmd received:%f, %f", msg->linear.x, msg->angular.z);
   }
 
   void ScoutROSMessenger::GetCurrentMotionCmdForSim(double &linear,
