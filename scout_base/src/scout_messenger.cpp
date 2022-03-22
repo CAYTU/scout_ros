@@ -32,7 +32,7 @@ namespace westonrobot
 
     // cmd subscriber
     motion_cmd_subscriber_ = nh_->subscribe<geometry_msgs::Twist>(
-        "/cmd_vel", 5, &ScoutROSMessenger::TwistCmdCallback, this);
+        "/smooth_cmd_vel", 1, &ScoutROSMessenger::TwistCmdCallback, this);
     rangefront_subscriber_ = nh_->subscribe<std_msgs::Float32>(
         "/rangefront", 5, &ScoutROSMessenger::RangeFrontCallback, this);
     rangerear_subscriber_ = nh_->subscribe<std_msgs::Float32>(
@@ -112,7 +112,7 @@ namespace westonrobot
         scout_->SetMotionCommand(0, angular);
       }
       else
-      {
+      { 
         scout_->SetMotionCommand(linear, angular);
       }
   }
